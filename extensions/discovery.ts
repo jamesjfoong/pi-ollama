@@ -1,11 +1,24 @@
 import { getCacheAgeMs, isCacheFresh, loadCache, saveCache } from "./cache";
-import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS, FETCH_TIMEOUT_MS } from "./config";
+import {
+	CONCURRENCY,
+	DEFAULT_CONTEXT_WINDOW,
+	DEFAULT_MAX_TOKENS,
+	ENRICH_TIMEOUT_MS,
+	LIST_TIMEOUT_MS,
+} from "./constants";
 import type { DiscoveredModel, DiscoveryResult, EnrichmentStats, OllamaConfig } from "./types";
+
+function openAiUrl(baseUrl: string, prefix: string | undefined, path: string): string {
+	const effectivePrefix = prefix || "/v1";
+	const hasPrefix = baseUrl.endsWith(effectivePrefix);
+	const base = hasPrefix ? baseUrl : `${baseUrl}${effectivePrefix}`;
+	return `${base}${path}`;
+}
 
 async function fetchWithTimeout(
 	url: string,
 	init: RequestInit = {},
-	timeoutMs = FETCH_TIMEOUT_MS,
+	timeoutMs = ENRICH_TIMEOUT_MS,
 ): Promise<Response> {
 	const controller = new AbortController();
 	const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -16,24 +29,67 @@ async function fetchWithTimeout(
 	}
 }
 
-function buildAuthHeaders(config: OllamaConfig): Record<string, string> {
+function buildAuthHeaders(config: OllamaConfig, keyIndex = 0): Record<string, string> {
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
 	};
-	if (config.authHeader && config.apiKey) {
-		headers.Authorization = `Bearer ${config.apiKey}`;
+	if (config.authHeader) {
+		const keys = config.apiKeys ?? [config.apiKey];
+		const key = keys[keyIndex] || keys[0];
+		if (key) {
+			headers.Authorization = `Bearer ${key}`;
+		}
 	}
 	return headers;
 }
 
-async function discoverOpenAiModelIds(config: OllamaConfig): Promise<string[]> {
-	const url = `${config.baseUrl}/v1/models`;
-	const response = await fetchWithTimeout(url, {
-		headers: buildAuthHeaders(config),
-	});
-	if (!response.ok) {
-		throw new Error(`OpenAI-compat API returned ${response.status}: ${await response.text()}`);
+async function tryWithKeyRotation<T>(
+	config: OllamaConfig,
+	operation: (keyIndex: number) => Promise<T>,
+	isAuthError: (err: unknown) => boolean,
+): Promise<T> {
+	const keys = config.apiKeys ?? [config.apiKey];
+	let lastErr: unknown;
+
+	for (let i = 0; i < keys.length; i++) {
+		try {
+			return await operation(i);
+		} catch (err) {
+			lastErr = err;
+			if (!isAuthError(err) || i === keys.length - 1) {
+				throw err;
+			}
+			// Auth failure — try next key
+		}
 	}
+
+	throw lastErr;
+}
+
+function isAuthFailure(err: unknown): boolean {
+	if (err instanceof Error) {
+		return /401|403|Unauthorized|Forbidden/i.test(err.message);
+	}
+	return false;
+}
+
+async function discoverOpenAiModelIds(config: OllamaConfig): Promise<string[]> {
+	const url = openAiUrl(config.baseUrl, config.prefix, "/models");
+	const response = await tryWithKeyRotation(
+		config,
+		async (keyIndex) => {
+			const res = await fetchWithTimeout(
+				url,
+				{ headers: buildAuthHeaders(config, keyIndex) },
+				LIST_TIMEOUT_MS,
+			);
+			if (!res.ok) {
+				throw new Error(`OpenAI-compat API returned ${res.status}: ${await res.text()}`);
+			}
+			return res;
+		},
+		isAuthFailure,
+	);
 	const payload = (await response.json()) as {
 		data: Array<{ id: string; object?: string }>;
 	};
@@ -44,14 +100,22 @@ async function discoverOpenAiModelIds(config: OllamaConfig): Promise<string[]> {
 }
 
 async function discoverNativeModelIds(config: OllamaConfig): Promise<string[]> {
-	const root = config.baseUrl.replace(/\/v1$/, "");
-	const url = `${root}/api/tags`;
-	const response = await fetchWithTimeout(url, {
-		headers: buildAuthHeaders(config),
-	});
-	if (!response.ok) {
-		throw new Error(`Native API returned ${response.status}: ${await response.text()}`);
-	}
+	const url = `${config.baseUrl}/api/tags`;
+	const response = await tryWithKeyRotation(
+		config,
+		async (keyIndex) => {
+			const res = await fetchWithTimeout(
+				url,
+				{ headers: buildAuthHeaders(config, keyIndex) },
+				LIST_TIMEOUT_MS,
+			);
+			if (!res.ok) {
+				throw new Error(`Native API returned ${res.status}: ${await res.text()}`);
+			}
+			return res;
+		},
+		isAuthFailure,
+	);
 	const payload = (await response.json()) as {
 		models?: Array<{ name: string }>;
 	};
@@ -68,21 +132,26 @@ function extractContextLength(modelInfo: Record<string, unknown>): number {
 }
 
 async function enrichModel(config: OllamaConfig, modelId: string): Promise<DiscoveredModel> {
-	const root = config.baseUrl.replace(/\/v1$/, "");
-	const url = `${root}/api/show`;
-	const response = await fetchWithTimeout(
-		url,
-		{
-			method: "POST",
-			headers: buildAuthHeaders(config),
-			body: JSON.stringify({ model: modelId, verbose: true }),
+	const url = `${config.baseUrl}/api/show`;
+	const response = await tryWithKeyRotation(
+		config,
+		async (keyIndex) => {
+			const res = await fetchWithTimeout(
+				url,
+				{
+					method: "POST",
+					headers: buildAuthHeaders(config, keyIndex),
+					body: JSON.stringify({ model: modelId, verbose: true }),
+				},
+				ENRICH_TIMEOUT_MS,
+			);
+			if (!res.ok) {
+				throw new Error(`/api/show ${res.status}: ${await res.text()}`);
+			}
+			return res;
 		},
-		FETCH_TIMEOUT_MS,
+		isAuthFailure,
 	);
-
-	if (!response.ok) {
-		throw new Error(`/api/show ${response.status}: ${await response.text()}`);
-	}
 
 	const payload = (await response.json()) as {
 		capabilities?: string[];
@@ -116,21 +185,27 @@ async function normalizeAndEnrich(
 	};
 
 	const models: DiscoveredModel[] = [];
-	for (const id of unique) {
-		try {
-			const model = await enrichModel(config, id);
-			models.push(model);
-			enrichment.succeeded += 1;
-		} catch {
-			models.push({
-				id,
-				name: id,
-				reasoning: false,
-				input: ["text"],
-				contextWindow: DEFAULT_CONTEXT_WINDOW,
-				maxTokens: DEFAULT_MAX_TOKENS,
-			});
-			enrichment.failed += 1;
+
+	for (let i = 0; i < unique.length; i += CONCURRENCY) {
+		const batch = unique.slice(i, i + CONCURRENCY);
+		const results = await Promise.allSettled(batch.map((id) => enrichModel(config, id)));
+
+		for (let j = 0; j < results.length; j++) {
+			const result = results[j];
+			if (result.status === "fulfilled") {
+				models.push(result.value);
+				enrichment.succeeded += 1;
+			} else {
+				models.push({
+					id: batch[j],
+					name: batch[j],
+					reasoning: false,
+					input: ["text"],
+					contextWindow: DEFAULT_CONTEXT_WINDOW,
+					maxTokens: DEFAULT_MAX_TOKENS,
+				});
+				enrichment.failed += 1;
+			}
 		}
 	}
 

@@ -1,7 +1,8 @@
 import { getCacheAgeMs, getCacheTtlMs, isCacheFresh, loadCache } from "./cache";
-import { resolveConfig, savePersistedConfig } from "./config";
+import { loadPersistedConfig, resolveConfig, savePersistedConfig } from "./config";
 import { discoverModels } from "./discovery";
 import { log } from "./logger";
+import { getMatchedOverrideLabels } from "./overrides";
 import {
 	getCurrentConfig,
 	getLastDiscovered,
@@ -26,6 +27,54 @@ function formatDuration(ms?: number): string {
 	const min = Math.floor(sec / 60);
 	const rem = sec % 60;
 	return `${min}m ${rem}s`;
+}
+
+function keyPoolSummary(config: OllamaConfig): string {
+	const keys = config.apiKeys ?? [config.apiKey];
+	if (keys.length <= 1) return "keyPool=single";
+	const masked = keys.map((k) => {
+		if (!k) return "(empty)";
+		if (k.length <= 8) return "***";
+		return `${k.slice(0, 4)}***`;
+	});
+	return `keyPool=${keys.length}x keys=${masked.join(", ")}`;
+}
+
+function modelTags(model: { reasoning: boolean; input: readonly string[] }): string {
+	const tags: string[] = [];
+	if (model.reasoning) tags.push("reasoning");
+	if (model.input.includes("image")) tags.push("vision");
+	return tags.join(", ") || "text-only";
+}
+
+async function persistExactModelOverride(
+	modelId: string,
+	override: NonNullable<OllamaConfig["modelOverrides"]>[string],
+): Promise<OllamaConfig> {
+	const persisted = await loadPersistedConfig();
+	const current = persisted.modelOverrides?.[modelId] ?? {};
+	await savePersistedConfig({
+		...persisted,
+		modelOverrides: {
+			...(persisted.modelOverrides ?? {}),
+			[modelId]: {
+				...current,
+				...override,
+				compat: override.compat
+					? { ...(current.compat ?? {}), ...override.compat }
+					: current.compat,
+				thinkingLevelMap: override.thinkingLevelMap
+					? {
+							...(current.thinkingLevelMap ?? {}),
+							...override.thinkingLevelMap,
+						}
+					: current.thinkingLevelMap,
+			},
+		},
+	});
+	const next = await resolveConfig();
+	setCurrentConfig(next);
+	return next;
 }
 
 export function registerCommands(pi: ExtensionAPI): void {
@@ -53,10 +102,15 @@ export function registerCommands(pi: ExtensionAPI): void {
 			await savePersistedConfig({
 				baseUrl: result.baseUrl,
 				apiKey: result.apiKey,
+				apiKeys: result.apiKeys,
 				api: result.api,
 				compat: result.compat,
 				authHeader: result.authHeader,
 				filter: result.filter,
+				prefix: result.prefix,
+				globalModelDefaults: result.globalModelDefaults,
+				modelOverridePatterns: result.modelOverridePatterns,
+				modelOverrides: result.modelOverrides,
 			});
 
 			// Re-discover and register
@@ -113,8 +167,9 @@ export function registerCommands(pi: ExtensionAPI): void {
 			const source = result?.source || "unknown";
 			const filter = config.filter ? ` filter=${config.filter}` : "";
 			const refreshed = formatDuration(Date.now() - getLastRefreshAt());
+			const keys = keyPoolSummary(config);
 			ctx.ui.notify(
-				`[pi-ollama] ${discovered.length} models @ ${config.baseUrl} source=${source} cacheAge=${age} refreshed=${refreshed} ago${filter}`,
+				`[pi-ollama] ${discovered.length} @ ${config.baseUrl} source=${source} ${keys} cacheAge=${age} refreshed=${refreshed} ago${filter}`,
 				"info",
 			);
 		},
@@ -134,6 +189,7 @@ export function registerCommands(pi: ExtensionAPI): void {
 			lines.push(`endpoint=${config.baseUrl}`);
 			lines.push(`api=${config.api}`);
 			lines.push(`authHeader=${config.authHeader ? "on" : "off"}`);
+			lines.push(keyPoolSummary(config));
 			lines.push(`filter=${config.filter || "(none)"}`);
 			lines.push(`cacheTtl=${formatDuration(getCacheTtlMs())}`);
 
@@ -159,6 +215,170 @@ export function registerCommands(pi: ExtensionAPI): void {
 			const summary = `[pi-ollama] doctor: ${lines.join(" | ")}`;
 			ctx.ui.notify(summary, "info");
 			log("info", summary);
+		},
+	});
+
+	// ---------------------------------------------------------------------------
+	// /ollama-fix
+	// ---------------------------------------------------------------------------
+	pi.registerCommand("ollama-fix", {
+		description: "Guided fixes for Ollama model capabilities",
+		handler: async (_args: unknown, ctx: CommandContext) => {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("[pi-ollama] Model fixes require interactive mode", "error");
+				return;
+			}
+
+			const models = getLastDiscovered();
+			if (models.length === 0) {
+				ctx.ui.notify("[pi-ollama] No models loaded yet", "warning");
+				return;
+			}
+
+			const choice = await ctx.ui.select(
+				"Pick a model to fix",
+				models.map((m) => m.name),
+			);
+			if (!choice) return;
+			const model = models.find((m) => m.name === choice);
+			if (!model) return;
+
+			const action = await ctx.ui.select(`Fix ${model.id}`, [
+				"Image / vision support",
+				"Thinking / reasoning support",
+				"Context window",
+				"Max output tokens",
+				"Display name",
+				"Remove all fixes for this model",
+				"Cancel",
+			]);
+			if (!action || action === "Cancel") return;
+
+			let nextConfig: OllamaConfig | null = null;
+			if (action === "Image / vision support") {
+				const picked = await ctx.ui.select(
+					`Image input for ${model.id} (currently: ${model.input.join("+")})`,
+					["Text only", "Text + image", "Cancel"],
+				);
+				if (!picked || picked === "Cancel") return;
+				nextConfig = await persistExactModelOverride(model.id, {
+					input: picked === "Text + image" ? ["text", "image"] : ["text"],
+				});
+			} else if (action === "Thinking / reasoning support") {
+				const picked = await ctx.ui.select(
+					`Thinking for ${model.id} (currently: ${model.reasoning ? "enabled" : "disabled"})`,
+					["Enable thinking", "Disable thinking", "Cancel"],
+				);
+				if (!picked || picked === "Cancel") return;
+				if (picked === "Disable thinking") {
+					nextConfig = await persistExactModelOverride(model.id, {
+						reasoning: false,
+					});
+				} else {
+					const format = await ctx.ui.select("Thinking format", [
+						"default / OpenAI reasoning_effort",
+						"qwen-chat-template",
+						"qwen",
+						"deepseek",
+						"zai",
+						"Cancel",
+					]);
+					if (!format || format === "Cancel") return;
+					nextConfig = await persistExactModelOverride(model.id, {
+						reasoning: true,
+						compat: {
+							thinkingFormat: format === "default / OpenAI reasoning_effort" ? "openai" : format,
+						},
+					});
+				}
+			} else if (action === "Context window") {
+				const raw = await ctx.ui.input("Context window tokens", String(model.contextWindow));
+				if (raw === null) return;
+				const contextWindow = Number(raw);
+				if (!Number.isFinite(contextWindow) || contextWindow <= 0) {
+					ctx.ui.notify("[pi-ollama] Invalid context window", "error");
+					return;
+				}
+				nextConfig = await persistExactModelOverride(model.id, {
+					contextWindow,
+				});
+			} else if (action === "Max output tokens") {
+				const raw = await ctx.ui.input("Max output tokens", String(model.maxTokens));
+				if (raw === null) return;
+				const maxTokens = Number(raw);
+				if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
+					ctx.ui.notify("[pi-ollama] Invalid max output tokens", "error");
+					return;
+				}
+				nextConfig = await persistExactModelOverride(model.id, { maxTokens });
+			} else if (action === "Display name") {
+				const name = await ctx.ui.input("Display name", model.name);
+				if (name === null) return;
+				nextConfig = await persistExactModelOverride(model.id, { name });
+			} else if (action === "Remove all fixes for this model") {
+				const confirmed = await ctx.ui.confirm(
+					"Remove fixes",
+					`Remove all saved fixes for ${model.id}?`,
+				);
+				if (!confirmed) return;
+				const persisted = await loadPersistedConfig();
+				const { [model.id]: _removed, ...remaining } = persisted.modelOverrides ?? {};
+				await savePersistedConfig({ ...persisted, modelOverrides: remaining });
+				nextConfig = await resolveConfig();
+				setCurrentConfig(nextConfig);
+			}
+
+			if (!nextConfig) return;
+			ctx.ui.notify(`[pi-ollama] Saved fixes for ${model.id}`, "success");
+			const refresh = await ctx.ui.confirm(
+				"Refresh now?",
+				"Re-discover and re-register models now?",
+			);
+			if (refresh) {
+				try {
+					const discovery = await discoverModels(nextConfig);
+					registerProvider(pi, nextConfig, discovery);
+					ctx.ui.notify(`[pi-ollama] ${discovery.models.length} models refreshed`, "success");
+				} catch (err) {
+					const msg = err instanceof Error ? err.message : String(err);
+					ctx.ui.notify(`[pi-ollama] Fix saved, refresh failed: ${msg.slice(0, 120)}`, "warning");
+				}
+			}
+		},
+	});
+
+	// ---------------------------------------------------------------------------
+	// /ollama-info
+	// ---------------------------------------------------------------------------
+	pi.registerCommand("ollama-info", {
+		description: "Show details for a specific Ollama model",
+		handler: async (_args: unknown, ctx: CommandContext) => {
+			const config = await getConfig();
+			const models = getLastDiscovered();
+			if (models.length === 0) {
+				ctx.ui.notify("[pi-ollama] No models loaded yet", "warning");
+				return;
+			}
+
+			const choice = await ctx.ui.select(
+				"Pick a model to inspect",
+				models.map((m) => m.name),
+			);
+			if (!choice) return;
+
+			const model = models.find((m) => m.name === choice);
+			if (!model) return;
+
+			const fixes = getMatchedOverrideLabels(model.id, config);
+			const fixSummary = fixes.length ? ` fixes=${fixes.join("; ")}` : " fixes=none";
+			const thinkingFormat = model.compat?.thinkingFormat
+				? ` thinkingFormat=${String(model.compat.thinkingFormat)}`
+				: "";
+
+			ctx.ui.notify(
+				`[pi-ollama] ${model.id} | ${modelTags(model)} | context=${model.contextWindow.toLocaleString()} maxTokens=${model.maxTokens.toLocaleString()}${thinkingFormat}${fixSummary}`,
+				"info",
+			);
 		},
 	});
 }

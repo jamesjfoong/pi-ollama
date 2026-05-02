@@ -18,6 +18,7 @@ extensions/
 ├── types.ts         # Shared TypeScript interfaces
 ├── config.ts        # Config resolution (env → file → fallback → defaults)
 ├── discovery.ts     # HTTP discovery (/v1/models, /api/tags) and filtering
+├── cache.ts         # Disk cache for discovered models
 ├── provider.ts      # Provider registration state management
 ├── setup-wizard.ts  # Interactive /ollama-setup TUI logic
 ├── commands.ts      # Command registration (/ollama-setup, /ollama-refresh, /ollama-status)

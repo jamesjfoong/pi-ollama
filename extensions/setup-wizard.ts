@@ -1,4 +1,4 @@
-import { resolveBaseUrl } from "./config";
+import { resolveBaseUrl, resolvePrefix } from "./config";
 import { discoverModels } from "./discovery";
 import type { CommandContext, OllamaConfig } from "./types";
 
@@ -9,10 +9,18 @@ function maskSecret(value: string): string {
 	return `${value.slice(0, visible)}***`;
 }
 
+function keyDisplay(config: OllamaConfig): string {
+	const keys = config.apiKeys ?? [config.apiKey];
+	if (keys.length <= 1) return maskSecret(keys[0] ?? "");
+	const first = maskSecret(keys[0]);
+	return `${first} (+${keys.length - 1} more)`;
+}
+
 function buildMenuOptions(working: OllamaConfig): string[] {
 	return [
 		`Base URL     : ${working.baseUrl}`,
-		`API Key      : ${maskSecret(working.apiKey)}`,
+		`Prefix       : ${working.prefix || "/v1"}`,
+		`API Key      : ${keyDisplay(working)}`,
 		`Auth Header  : ${working.authHeader ? "on" : "off"}`,
 		`Filter       : ${working.filter || "(none)"}`,
 		"Test connection",
@@ -42,7 +50,7 @@ export async function runSetupWizard(
 			const picked = await ctx.ui.select("Pick endpoint", [
 				`Keep current (${working.baseUrl})`,
 				"Local Ollama (http://localhost:11434)",
-				"Ollama Cloud (https://ollama.com/v1)",
+				"Ollama Cloud (https://ollama.com)",
 				"Custom...",
 			]);
 			if (picked === null) break;
@@ -50,8 +58,10 @@ export async function runSetupWizard(
 				// no-op
 			} else if (picked.startsWith("Local")) {
 				working.baseUrl = "http://localhost:11434";
+				working.prefix = "/v1";
 			} else if (picked.startsWith("Ollama Cloud")) {
-				working.baseUrl = "https://ollama.com/v1";
+				working.baseUrl = "https://ollama.com";
+				working.prefix = "/v1";
 			} else {
 				// Custom
 				const custom = await ctx.ui.input("Enter custom Ollama Base URL", working.baseUrl);
@@ -60,12 +70,32 @@ export async function runSetupWizard(
 				}
 			}
 		} else if (choice.startsWith("API Key")) {
-			const apiKey = await ctx.ui.input(
-				"API Key (or env var name) — leave empty to keep current",
-				maskSecret(working.apiKey),
+			const raw = await ctx.ui.input(
+				"API Key(s) — comma-separated for rotation, leave empty to keep current",
+				keyDisplay(working),
 			);
-			if (apiKey !== null) {
-				working.apiKey = apiKey || working.apiKey;
+			if (raw !== null) {
+				if (raw.includes(",")) {
+					// Comma-separated multi-key mode
+					working.apiKeys = raw
+						.split(",")
+						.map((s) => s.trim())
+						.filter(Boolean);
+					working.apiKey = working.apiKeys[0] || working.apiKey;
+				} else if (raw.trim()) {
+					// Single key mode
+					working.apiKey = raw.trim();
+					working.apiKeys = undefined;
+				}
+				// If empty, keep existing keys
+			}
+		} else if (choice.startsWith("Prefix")) {
+			const custom = await ctx.ui.input(
+				"Enter API path prefix (e.g. /v1, /api/v1, or empty)",
+				working.prefix || "/v1",
+			);
+			if (custom !== null) {
+				working.prefix = resolvePrefix(custom);
 			}
 		} else if (choice.startsWith("Auth Header")) {
 			const authHeader = await ctx.ui.confirm(

@@ -1,6 +1,7 @@
+import { PREFIX } from "./constants";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-const PREFIX = "[pi-ollama]";
 const DEBUG_ENABLED =
 	process.env.PI_OLLAMA_DEBUG === "1" || process.env.PI_OLLAMA_DEBUG?.toLowerCase() === "true";
 

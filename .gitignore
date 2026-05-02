@@ -1,5 +1,6 @@
 # pi IDE artifacts
 .pi-lens/
+.pi/
 
 # Node
 node_modules/
@@ -12,3 +13,9 @@ dist/
 
 # OS
 .DS_Store
+
+# Task management / planning artifacts
+taskplane-tasks/
+
+# Coverage reports
+coverage/

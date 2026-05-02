@@ -1,5 +1,6 @@
-import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS } from "./config";
+import { DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS } from "./constants";
 import { shouldInclude } from "./discovery";
+import { applyModelOverrides } from "./overrides";
 import type { DiscoveredModel, DiscoveryResult, ExtensionAPI, OllamaConfig } from "./types";
 
 /** Mutable runtime state — kept in this module to avoid global pollution. */
@@ -38,28 +39,42 @@ export function registerProvider(
 	config: OllamaConfig,
 	result: DiscoveryResult,
 ): void {
-	const filtered = result.models.filter((m) => shouldInclude(m.id, config.filter));
+	const overrideResult = applyModelOverrides(result.models, config);
+	const filtered = overrideResult.models.filter((m) => shouldInclude(m.id, config.filter));
 	state.models = filtered;
 	state.lastResult = {
 		...result,
 		models: filtered,
+		warnings: [...(result.warnings ?? []), ...overrideResult.warnings],
 	};
 	state.lastRefreshAt = Date.now();
 
+	const effectiveBaseUrl = config.prefix ? `${config.baseUrl}${config.prefix}` : config.baseUrl;
 	pi.registerProvider("ollama", {
-		baseUrl: config.baseUrl,
-		api: config.api as any,
+		baseUrl: effectiveBaseUrl,
+		api: config.api,
 		apiKey: config.apiKey,
-		compat: config.compat as any,
+		compat: config.compat,
 		authHeader: config.authHeader,
 		models: filtered.map((m) => ({
 			id: m.id,
 			name: m.name,
+			api: m.api,
+			baseUrl: m.baseUrl,
 			reasoning: m.reasoning,
+			thinkingLevelMap: m.thinkingLevelMap,
 			input: m.input,
 			contextWindow: m.contextWindow || DEFAULT_CONTEXT_WINDOW,
 			maxTokens: m.maxTokens || DEFAULT_MAX_TOKENS,
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			cost: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				...(m.cost ?? {}),
+			},
+			headers: m.headers,
+			compat: m.compat,
 		})),
 	});
 }

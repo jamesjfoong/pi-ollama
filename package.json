@@ -23,10 +23,13 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"typecheck": "tsc --noEmit",
-		"test": "npx tsx --test test/*.test.ts"
+		"test": "npx tsx --test test/*.test.ts",
+		"test:coverage": "c8 --check-coverage --lines 60 npx tsx --test test/*.test.ts",
+		"coverage": "c8 --reporter=lcov npx tsx --test test/*.test.ts"
 	},
 	"devDependencies": {
 		"@types/node": "^20.19.39",
+		"c8": "^10.1.0",
 		"prettier": "^3.3.0",
 		"tsx": "^4.15.0"
 	},
