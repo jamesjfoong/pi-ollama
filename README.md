@@ -4,6 +4,8 @@ Auto-discover and register Ollama models in [pi](https://pi.dev). No more hand-e
 
 Whenever you `ollama pull` a new model, it shows up in `/model` automatically — no restart, no JSON editing.
 
+<a href="https://github.com/sponsors/jamesjfoong" target="_blank"><img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?style=flat-square&logo=github&logoColor=white" alt="GitHub Sponsors" /></a>
+
 ## Install
 
 ```bash
