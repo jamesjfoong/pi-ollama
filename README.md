@@ -7,13 +7,13 @@ Whenever you `ollama pull` a new model, it shows up in `/model` automatically â€
 ## Install
 
 ```bash
-pi install git:github.com/jamesjfoong/pi-ollama@main
+pi install npm:@jamesjfoong/pi-ollama
 ```
 
 Or test drive without installing:
 
 ```bash
-pi -e git:github.com/jamesjfoong/pi-ollama@main
+pi -e npm:@jamesjfoong/pi-ollama
 ```
 
 ## What it does
@@ -274,6 +274,11 @@ npm run format:check # Verify formatting
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development guide, architecture overview, and workflow.
+
+## License
+
+MIT
+w.
 
 ## License
 

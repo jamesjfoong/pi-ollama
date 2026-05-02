@@ -64,7 +64,7 @@ export default async function (pi: ExtensionAPI) {
 				ctx.ui.notify(`[pi-ollama] ${result.warnings[0].slice(0, 120)}`, "warning");
 			}
 		} else if (startupError) {
-			ctx.ui.notify(`[pi-ollama] Off-line: ${startupError.slice(0, 80)}`, "warning");
+			ctx.ui.notify(`[pi-ollama] Offline: ${startupError.slice(0, 80)}`, "warning");
 		}
 	});
 

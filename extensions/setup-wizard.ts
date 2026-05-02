@@ -62,6 +62,10 @@ export async function runSetupWizard(
 			} else if (picked.startsWith("Ollama Cloud")) {
 				working.baseUrl = "https://ollama.com";
 				working.prefix = "/v1";
+				ctx.ui.notify(
+					"[pi-ollama] Note: ollama.com may not expose /v1/models — verify your endpoint",
+					"warning",
+				);
 			} else {
 				// Custom
 				const custom = await ctx.ui.input("Enter custom Ollama Base URL", working.baseUrl);

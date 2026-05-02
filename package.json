@@ -1,5 +1,5 @@
 {
-	"name": "pi-ollama",
+	"name": "@jamesjfoong/pi-ollama",
 	"version": "1.0.0",
 	"description": "Auto-discover and register Ollama models in pi. No more manual models.json editing.",
 	"keywords": [
@@ -18,7 +18,7 @@
 		"url": "https://github.com/jamesjfoong/pi-ollama/issues"
 	},
 	"homepage": "https://github.com/jamesjfoong/pi-ollama#readme",
-	"author": "",
+	"author": "jamesjfoong",
 	"scripts": {
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
