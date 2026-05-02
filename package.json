@@ -37,6 +37,6 @@
 		"extensions": [
 			"./extensions"
 		],
-		"image": "https://raw.githubusercontent.com/jamesjfoong/pi-ollama/main/assets/pi-ollama-gallery.png"
+		"image": "https://raw.githubusercontent.com/jamesjfoong/pi-ollama/main/assets/poster.png"
 	}
 }
