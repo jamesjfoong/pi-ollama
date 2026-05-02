@@ -1,0 +1,210 @@
+/* pi-ollama brand design system — shared across all social assets */
+
+/* --- Palette --- */
+:root {
+	--bg: #08080c;
+	--accent: #00d4aa;
+	--accent-glow: rgba(0, 212, 170, 0.35);
+	--secondary: #ff6b35;
+	--secondary-glow: rgba(255, 107, 53, 0.2);
+	--text: #ffffff;
+	--text-muted: rgba(255, 255, 255, 0.5);
+	--text-dim: rgba(255, 255, 255, 0.25);
+	--surface: rgba(255, 255, 255, 0.04);
+	--surface-border: rgba(255, 255, 255, 0.1);
+	--npm-red: #c12138;
+}
+
+/* --- Background effects --- */
+.brand-bg {
+	background: var(--bg);
+	position: relative;
+	overflow: hidden;
+}
+.brand-grain {
+	position: absolute;
+	inset: 0;
+	opacity: 0.04;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	pointer-events: none;
+	z-index: 1;
+}
+.brand-grid {
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+	background-size: 40px 40px;
+	pointer-events: none;
+	z-index: 0;
+}
+.brand-orb {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(80px);
+	z-index: 0;
+}
+.brand-orb--accent {
+	background: var(--accent);
+	opacity: 0.35;
+}
+.brand-orb--secondary {
+	background: var(--secondary);
+	opacity: 0.2;
+}
+
+/* --- Typography --- */
+.brand-title {
+	font-family: "Syne", sans-serif;
+	font-weight: 800;
+	color: var(--text);
+	letter-spacing: -0.03em;
+	line-height: 0.95;
+}
+.brand-title span {
+	color: var(--accent);
+	text-shadow: 0 0 40px var(--accent-glow);
+}
+.brand-body {
+	font-family: "Space Mono", monospace;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+.brand-body code {
+	background: rgba(255, 255, 255, 0.08);
+	padding: 2px 6px;
+	border-radius: 3px;
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 0.85em;
+}
+
+/* --- Badges --- */
+.brand-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: 4px;
+	font-family: "Space Mono", monospace;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+}
+.brand-badge::before {
+	content: "";
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+}
+.brand-badge--extension {
+	background: rgba(0, 212, 170, 0.1);
+	border: 1px solid rgba(0, 212, 170, 0.3);
+	color: var(--accent);
+}
+.brand-badge--extension::before {
+	background: var(--accent);
+	box-shadow: 0 0 6px var(--accent);
+}
+.brand-badge--npm {
+	background: rgba(193, 33, 56, 0.1);
+	border: 1px solid rgba(193, 33, 56, 0.3);
+	color: var(--npm-red);
+}
+.brand-badge--npm::before {
+	background: var(--npm-red);
+	box-shadow: 0 0 6px var(--npm-red);
+}
+
+/* --- Pills --- */
+.brand-pill {
+	padding: 8px 14px;
+	background: var(--surface);
+	border: 1px solid var(--surface-border);
+	border-radius: 6px;
+	font-family: "Space Mono", monospace;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.7);
+	letter-spacing: 0.02em;
+}
+.brand-pill strong {
+	color: var(--text);
+	font-weight: 700;
+}
+
+/* --- Terminal / Code block --- */
+.brand-terminal {
+	background: rgba(255, 255, 255, 0.02);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow:
+		0 20px 60px rgba(0, 0, 0, 0.5),
+		0 0 0 1px rgba(0, 212, 170, 0.05);
+}
+.brand-terminal__header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 10px 14px;
+	background: rgba(255, 255, 255, 0.03);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.brand-terminal__dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+.brand-terminal__dot--red {
+	background: #ff5f56;
+}
+.brand-terminal__dot--yellow {
+	background: #ffbd2e;
+}
+.brand-terminal__dot--green {
+	background: #27c93f;
+}
+.brand-terminal__title {
+	margin-left: 8px;
+	font-family: "Space Mono", monospace;
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.3);
+}
+.brand-terminal__body {
+	padding: 16px 18px;
+	font-family: "Space Mono", monospace;
+	font-size: 12px;
+	line-height: 1.7;
+	color: rgba(255, 255, 255, 0.7);
+}
+.brand-terminal__body .cmd {
+	color: var(--accent);
+}
+.brand-terminal__body .output {
+	color: rgba(255, 255, 255, 0.45);
+}
+.brand-terminal__body .highlight {
+	color: var(--secondary);
+	font-weight: 700;
+}
+.brand-terminal__body .dim {
+	color: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Install command --- */
+.brand-install {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: rgba(0, 212, 170, 0.08);
+	border: 1px solid rgba(0, 212, 170, 0.2);
+	padding: 10px 16px;
+	border-radius: 6px;
+	font-family: "Space Mono", monospace;
+	font-size: 14px;
+	color: var(--accent);
+}
+.brand-install .prompt {
+	color: rgba(255, 255, 255, 0.3);
+}

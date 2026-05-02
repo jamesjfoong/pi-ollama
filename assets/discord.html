@@ -46,23 +46,23 @@
 				position: absolute;
 				border-radius: 50%;
 				filter: blur(80px);
-				opacity: 0.35;
 				z-index: 0;
 			}
-			.orb-1 {
+			.orb-a {
 				width: 450px;
 				height: 450px;
 				background: #00d4aa;
+				opacity: 0.35;
 				top: -120px;
 				right: -80px;
 			}
-			.orb-2 {
+			.orb-b {
 				width: 320px;
 				height: 320px;
 				background: #ff6b35;
+				opacity: 0.2;
 				bottom: -50px;
 				left: -40px;
-				opacity: 0.2;
 			}
 			.content {
 				position: relative;
@@ -74,38 +74,49 @@
 				flex-direction: column;
 				justify-content: space-between;
 			}
-			.header {
+
+			/* badges */
+			.badges {
 				display: flex;
-				align-items: center;
-				gap: 12px;
+				gap: 10px;
 			}
 			.badge {
 				display: inline-flex;
 				align-items: center;
 				gap: 6px;
-				background: rgba(0, 212, 170, 0.1);
-				border: 1px solid rgba(0, 212, 170, 0.3);
 				padding: 5px 12px;
 				border-radius: 4px;
 				font-size: 10px;
-				color: #00d4aa;
+				font-weight: 700;
 				text-transform: uppercase;
 				letter-spacing: 0.15em;
-				font-weight: 700;
 			}
 			.badge::before {
 				content: "";
 				width: 5px;
 				height: 5px;
-				background: #00d4aa;
 				border-radius: 50%;
+			}
+			.badge--ext {
+				background: rgba(0, 212, 170, 0.1);
+				border: 1px solid rgba(0, 212, 170, 0.3);
+				color: #00d4aa;
+			}
+			.badge--ext::before {
+				background: #00d4aa;
 				box-shadow: 0 0 6px #00d4aa;
 			}
-			.npm-badge {
+			.badge--npm {
 				background: rgba(193, 33, 56, 0.1);
-				border-color: rgba(193, 33, 56, 0.3);
+				border: 1px solid rgba(193, 33, 56, 0.3);
 				color: #c12138;
 			}
+			.badge--npm::before {
+				background: #c12138;
+				box-shadow: 0 0 6px #c12138;
+			}
+
+			/* title */
 			.title {
 				font-family: "Syne", sans-serif;
 				font-weight: 800;
@@ -117,8 +128,10 @@
 			}
 			.title span {
 				color: #00d4aa;
-				text-shadow: 0 0 35px rgba(0, 212, 170, 0.3);
+				text-shadow: 0 0 40px rgba(0, 212, 170, 0.35);
 			}
+
+			/* subtitle */
 			.subtitle {
 				margin-top: 12px;
 				font-size: 17px;
@@ -133,6 +146,8 @@
 				color: rgba(255, 255, 255, 0.6);
 				font-size: 14px;
 			}
+
+			/* body layout */
 			.body {
 				display: flex;
 				gap: 40px;
@@ -157,17 +172,19 @@
 			.right .cmd {
 				color: #00d4aa;
 			}
-			.right .output {
+			.right .out {
 				color: rgba(255, 255, 255, 0.45);
 			}
-			.right .highlight {
+			.right .hi {
 				color: #ff6b35;
 				font-weight: 700;
 			}
 			.right .dim {
 				color: rgba(255, 255, 255, 0.2);
 			}
-			.features {
+
+			/* pills */
+			.pills {
 				display: flex;
 				gap: 10px;
 				flex-wrap: wrap;
@@ -185,12 +202,14 @@
 			.pill strong {
 				color: #fff;
 			}
+
+			/* footer */
 			.footer {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
 			}
-			.install-cmd {
+			.install {
 				display: flex;
 				align-items: center;
 				gap: 10px;
@@ -201,7 +220,7 @@
 				font-size: 14px;
 				color: #00d4aa;
 			}
-			.install-cmd .prompt {
+			.install .pr {
 				color: rgba(255, 255, 255, 0.3);
 			}
 			.version {
@@ -214,21 +233,22 @@
 	<body>
 		<div class="grain"></div>
 		<div class="grid"></div>
-		<div class="orb orb-1"></div>
-		<div class="orb orb-2"></div>
+		<div class="orb orb-a"></div>
+		<div class="orb orb-b"></div>
+
 		<div class="content">
 			<div class="body">
 				<div class="left">
-					<div class="header">
-						<div class="badge">pi extension</div>
-						<div class="badge npm-badge">v1.0.0</div>
+					<div class="badges">
+						<div class="badge badge--ext">pi extension</div>
+						<div class="badge badge--npm">v1.0.0</div>
 					</div>
 					<h1 class="title">pi<span>-</span>ollama</h1>
 					<p class="subtitle">
 						Auto-discover and register Ollama models in pi. No more hand-editing
 						<code>models.json</code>.
 					</p>
-					<div class="features">
+					<div class="pills">
 						<div class="pill"><strong>Auto-discovery</strong></div>
 						<div class="pill"><strong>Key rotation</strong></div>
 						<div class="pill"><strong>TUI setup</strong></div>
@@ -236,23 +256,20 @@
 					</div>
 				</div>
 				<div class="right">
-					<span class="prompt">$ </span
-					><span class="cmd">pi install npm:@jamesjfoong/pi-ollama</span><br />
-					<span class="output">+ @jamesjfoong/pi-ollama@1.0.0</span><br />
-					<span class="dim">---</span><br />
-					<span class="prompt">$ </span><span class="cmd">/ollama-status</span><br />
-					<span class="output">[pi-ollama] </span><span class="highlight">12 models ready</span
+					<span class="pr">$ </span><span class="cmd">pi install npm:@jamesjfoong/pi-ollama</span
 					><br />
-					<span class="output">source=live-openai cacheAge=&lt;1s</span><br />
+					<span class="out">+ @jamesjfoong/pi-ollama@1.0.0</span><br />
 					<span class="dim">---</span><br />
-					<span class="prompt">$ </span><span class="cmd">/ollama-setup</span><br />
-					<span class="output">Endpoint configured. Models discovered.</span>
+					<span class="pr">$ </span><span class="cmd">/ollama-status</span><br />
+					<span class="out">[pi-ollama] </span><span class="hi">12 models ready</span><br />
+					<span class="out">source=live-openai cacheAge=&lt;1s</span><br />
+					<span class="dim">---</span><br />
+					<span class="pr">$ </span><span class="cmd">/ollama-setup</span><br />
+					<span class="out">Endpoint configured. Models discovered.</span>
 				</div>
 			</div>
 			<div class="footer">
-				<div class="install-cmd">
-					<span class="prompt">$</span> pi install npm:@jamesjfoong/pi-ollama
-				</div>
+				<div class="install"><span class="pr">$</span> pi install npm:@jamesjfoong/pi-ollama</div>
 				<div class="version">MIT &middot; github.com/jamesjfoong/pi-ollama</div>
 			</div>
 		</div>

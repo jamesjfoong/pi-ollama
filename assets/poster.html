@@ -46,23 +46,23 @@
 				position: absolute;
 				border-radius: 50%;
 				filter: blur(80px);
-				opacity: 0.35;
 				z-index: 0;
 			}
-			.orb-1 {
+			.orb-a {
 				width: 400px;
 				height: 400px;
 				background: #00d4aa;
+				opacity: 0.35;
 				top: -100px;
 				right: -80px;
 			}
-			.orb-2 {
+			.orb-b {
 				width: 300px;
 				height: 300px;
 				background: #ff6b35;
+				opacity: 0.2;
 				bottom: -60px;
 				left: -40px;
-				opacity: 0.2;
 			}
 			.content {
 				position: relative;
@@ -74,28 +74,49 @@
 				flex-direction: column;
 				justify-content: space-between;
 			}
+
+			/* badges */
+			.badges {
+				display: flex;
+				gap: 10px;
+			}
 			.badge {
 				display: inline-flex;
 				align-items: center;
 				gap: 6px;
-				background: rgba(0, 212, 170, 0.1);
-				border: 1px solid rgba(0, 212, 170, 0.3);
 				padding: 5px 12px;
 				border-radius: 4px;
 				font-size: 10px;
-				color: #00d4aa;
+				font-weight: 700;
 				text-transform: uppercase;
 				letter-spacing: 0.15em;
-				font-weight: 700;
 			}
 			.badge::before {
 				content: "";
 				width: 5px;
 				height: 5px;
-				background: #00d4aa;
 				border-radius: 50%;
+			}
+			.badge--ext {
+				background: rgba(0, 212, 170, 0.1);
+				border: 1px solid rgba(0, 212, 170, 0.3);
+				color: #00d4aa;
+			}
+			.badge--ext::before {
+				background: #00d4aa;
 				box-shadow: 0 0 6px #00d4aa;
 			}
+			.badge--npm {
+				background: rgba(193, 33, 56, 0.1);
+				border: 1px solid rgba(193, 33, 56, 0.3);
+				color: #c12138;
+			}
+			.badge--npm::before {
+				background: #c12138;
+				box-shadow: 0 0 6px #c12138;
+			}
+
+			/* title */
 			.title {
 				font-family: "Syne", sans-serif;
 				font-weight: 800;
@@ -107,8 +128,10 @@
 			}
 			.title span {
 				color: #00d4aa;
-				text-shadow: 0 0 35px rgba(0, 212, 170, 0.3);
+				text-shadow: 0 0 40px rgba(0, 212, 170, 0.35);
 			}
+
+			/* subtitle */
 			.subtitle {
 				margin-top: 12px;
 				font-size: 17px;
@@ -123,6 +146,8 @@
 				color: rgba(255, 255, 255, 0.6);
 				font-size: 14px;
 			}
+
+			/* terminal */
 			.terminal {
 				position: absolute;
 				right: 56px;
@@ -137,7 +162,7 @@
 					0 20px 60px rgba(0, 0, 0, 0.5),
 					0 0 0 1px rgba(0, 212, 170, 0.05);
 			}
-			.terminal-header {
+			.t-header {
 				display: flex;
 				align-items: center;
 				gap: 6px;
@@ -145,50 +170,52 @@
 				background: rgba(255, 255, 255, 0.03);
 				border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 			}
-			.dot {
+			.t-dot {
 				width: 10px;
 				height: 10px;
 				border-radius: 50%;
 			}
-			.dot-red {
+			.t-dot-r {
 				background: #ff5f56;
 			}
-			.dot-yellow {
+			.t-dot-y {
 				background: #ffbd2e;
 			}
-			.dot-green {
+			.t-dot-g {
 				background: #27c93f;
 			}
-			.terminal-title {
+			.t-title {
 				margin-left: 8px;
 				font-size: 11px;
 				color: rgba(255, 255, 255, 0.3);
 			}
-			.terminal-body {
+			.t-body {
 				padding: 16px 18px;
 				font-size: 12px;
 				line-height: 1.7;
 				color: rgba(255, 255, 255, 0.7);
 			}
-			.terminal-body .cmd {
+			.t-body .cmd {
 				color: #00d4aa;
 			}
-			.terminal-body .output {
+			.t-body .out {
 				color: rgba(255, 255, 255, 0.45);
 			}
-			.terminal-body .highlight {
+			.t-body .hi {
 				color: #ff6b35;
 				font-weight: 700;
 			}
-			.terminal-body .dim {
+			.t-body .dim {
 				color: rgba(255, 255, 255, 0.2);
 			}
+
+			/* footer */
 			.footer {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
 			}
-			.features {
+			.pills {
 				display: flex;
 				gap: 10px;
 				flex-wrap: wrap;
@@ -205,7 +232,7 @@
 			.pill strong {
 				color: #fff;
 			}
-			.install-cmd {
+			.install {
 				display: flex;
 				align-items: center;
 				gap: 10px;
@@ -216,20 +243,16 @@
 				font-size: 13px;
 				color: #00d4aa;
 			}
-			.install-cmd .prompt {
+			.install .pr {
 				color: rgba(255, 255, 255, 0.3);
 			}
-			.version {
-				font-size: 11px;
-				color: rgba(255, 255, 255, 0.25);
-				letter-spacing: 0.1em;
-			}
-			.float-code {
+
+			/* floaters */
+			.float {
 				position: absolute;
 				font-size: 10px;
 				color: rgba(255, 255, 255, 0.06);
 				z-index: 0;
-				font-family: "Space Mono", monospace;
 				line-height: 1.4;
 			}
 			.float-1 {
@@ -245,56 +268,62 @@
 	<body>
 		<div class="grain"></div>
 		<div class="grid"></div>
-		<div class="orb orb-1"></div>
-		<div class="orb orb-2"></div>
-		<div class="float-code float-1">
+		<div class="orb orb-a"></div>
+		<div class="orb orb-b"></div>
+
+		<div class="float float-1">
 			{ id: "llama3.1:8b",<br />
 			&nbsp;&nbsp;reasoning: false,<br />
 			&nbsp;&nbsp;input: ["text", "image"],<br />
 			&nbsp;&nbsp;contextWindow: 128000 }
 		</div>
-		<div class="float-code float-2">
+		<div class="float float-2">
 			/v1/models &rarr; /api/tags<br />
 			enrich &rarr; cache &rarr; register
 		</div>
+
 		<div class="content">
 			<div>
-				<div class="badge">pi extension</div>
+				<div class="badges">
+					<div class="badge badge--ext">pi extension</div>
+					<div class="badge badge--npm">v1.0.0</div>
+				</div>
 				<h1 class="title">pi<span>-</span>ollama</h1>
 				<p class="subtitle">
 					Auto-discover and register Ollama models in pi. No more hand-editing
 					<code>models.json</code>.
 				</p>
 			</div>
+
 			<div class="terminal">
-				<div class="terminal-header">
-					<div class="dot dot-red"></div>
-					<div class="dot dot-yellow"></div>
-					<div class="dot dot-green"></div>
-					<span class="terminal-title">ollama</span>
+				<div class="t-header">
+					<div class="t-dot t-dot-r"></div>
+					<div class="t-dot t-dot-y"></div>
+					<div class="t-dot t-dot-g"></div>
+					<span class="t-title">ollama</span>
 				</div>
-				<div class="terminal-body">
-					<span class="prompt">$ </span
-					><span class="cmd">pi install npm:@jamesjfoong/pi-ollama</span><br />
-					<span class="output">+ @jamesjfoong/pi-ollama@1.0.0</span><br />
-					<span class="dim">---</span><br />
-					<span class="prompt">$ </span><span class="cmd">/ollama-status</span><br />
-					<span class="output">[pi-ollama] </span><span class="highlight">12 models ready</span
+				<div class="t-body">
+					<span class="pr">$ </span><span class="cmd">pi install npm:@jamesjfoong/pi-ollama</span
 					><br />
-					<span class="output">source=live-openai cacheAge=&lt;1s</span><br />
+					<span class="out">+ @jamesjfoong/pi-ollama@1.0.0</span><br />
 					<span class="dim">---</span><br />
-					<span class="prompt">$ </span><span class="cmd">/ollama-setup</span><br />
-					<span class="output">Endpoint configured. Models discovered.</span>
+					<span class="pr">$ </span><span class="cmd">/ollama-status</span><br />
+					<span class="out">[pi-ollama] </span><span class="hi">12 models ready</span><br />
+					<span class="out">source=live-openai cacheAge=&lt;1s</span><br />
+					<span class="dim">---</span><br />
+					<span class="pr">$ </span><span class="cmd">/ollama-setup</span><br />
+					<span class="out">Endpoint configured. Models discovered.</span>
 				</div>
 			</div>
+
 			<div class="footer">
-				<div class="features">
+				<div class="pills">
 					<div class="pill"><strong>Auto-discovery</strong></div>
 					<div class="pill"><strong>Key rotation</strong></div>
 					<div class="pill"><strong>TUI setup</strong></div>
 					<div class="pill"><strong>Model fixes</strong></div>
 				</div>
-				<div class="version">v1.0.0</div>
+				<div class="install"><span class="pr">$</span> pi install npm:@jamesjfoong/pi-ollama</div>
 			</div>
 		</div>
 	</body>
