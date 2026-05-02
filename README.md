@@ -280,8 +280,3 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full development guide, archite
 ## License
 
 MIT
-w.
-
-## License
-
-MIT
