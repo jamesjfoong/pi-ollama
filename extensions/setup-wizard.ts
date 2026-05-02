@@ -9,24 +9,20 @@ function maskSecret(value: string): string {
 	return `${value.slice(0, visible)}***`;
 }
 
-function buildMenu(working: OllamaConfig): string {
-	const lines = [
-		"1) Base URL     : " + working.baseUrl,
-		"2) API Key      : " + maskSecret(working.apiKey),
-		"3) Auth Header  : " + (working.authHeader ? "on" : "off"),
-		"4) Filter       : " + (working.filter || "(none)"),
-		"5) Test connection",
-		"6) Save & discover",
-		"7) Cancel",
-		"",
-		"Enter choice (1-7):",
+function buildMenuOptions(working: OllamaConfig): string[] {
+	return [
+		`Base URL     : ${working.baseUrl}`,
+		`API Key      : ${maskSecret(working.apiKey)}`,
+		`Auth Header  : ${working.authHeader ? "on" : "off"}`,
+		`Filter       : ${working.filter || "(none)"}`,
+		"Test connection",
+		"Save & discover",
+		"Cancel",
 	];
-	return lines.join("\n");
 }
 
 /**
- * Interactive config menu you can navigate freely.
- * Pick a field, edit it, then return to the menu.
+ * Interactive config menu using TUI select for keyboard navigation.
  * Returns the updated config, or `null` if the user cancelled.
  */
 export async function runSetupWizard(
@@ -36,75 +32,70 @@ export async function runSetupWizard(
 	const working = { ...current };
 
 	while (true) {
-		const choice = await ctx.ui.input(buildMenu(working));
+		const options = buildMenuOptions(working);
+		const choice = await ctx.ui.select("Ollama Setup — ↑↓ to navigate, Enter to pick", options);
 		if (choice === null) return null;
 
-		switch (choice.trim()) {
-			case "1": {
-				const baseUrl = await ctx.ui.input(
-					"Ollama Base URL (hint: local http://localhost:11434 or cloud https://ollama.com/v1)",
-					working.baseUrl,
+		// Determine choice by matching against generated label
+		// (strings include current values so we compare by prefix)
+		if (choice.startsWith("Base URL")) {
+			const picked = await ctx.ui.select("Pick endpoint", [
+				`Keep current (${working.baseUrl})`,
+				"Local Ollama (http://localhost:11434)",
+				"Ollama Cloud (https://ollama.com/v1)",
+				"Custom...",
+			]);
+			if (picked === null) break;
+			if (picked.startsWith("Keep current")) {
+				// no-op
+			} else if (picked.startsWith("Local")) {
+				working.baseUrl = "http://localhost:11434";
+			} else if (picked.startsWith("Ollama Cloud")) {
+				working.baseUrl = "https://ollama.com/v1";
+			} else {
+				// Custom
+				const custom = await ctx.ui.input("Enter custom Ollama Base URL", working.baseUrl);
+				if (custom !== null) {
+					working.baseUrl = resolveBaseUrl(custom || working.baseUrl);
+				}
+			}
+		} else if (choice.startsWith("API Key")) {
+			const apiKey = await ctx.ui.input(
+				"API Key (or env var name) — leave empty to keep current",
+				maskSecret(working.apiKey),
+			);
+			if (apiKey !== null) {
+				working.apiKey = apiKey || working.apiKey;
+			}
+		} else if (choice.startsWith("Auth Header")) {
+			const authHeader = await ctx.ui.confirm(
+				"Auth Header",
+				`Send Authorization: Bearer header? Currently: ${working.authHeader ? "on" : "off"}`,
+			);
+			working.authHeader = authHeader;
+		} else if (choice.startsWith("Filter")) {
+			const filter = await ctx.ui.input("Model filter regex (optional)", working.filter || "");
+			if (filter !== null) {
+				working.filter = filter || undefined;
+			}
+		} else if (choice === "Test connection") {
+			ctx.ui.notify("[pi-ollama] Testing…", "info");
+			try {
+				const discovery = await discoverModels(working);
+				ctx.ui.notify(
+					`[pi-ollama] ✓ ${discovery.models.length} models found (${discovery.source})`,
+					"success",
 				);
-				if (baseUrl !== null) {
-					working.baseUrl = resolveBaseUrl(baseUrl || working.baseUrl);
-				}
-				break;
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				ctx.ui.notify(`[pi-ollama] ✗ ${msg.slice(0, 120)}`, "warning");
 			}
-
-			case "2": {
-				const apiKey = await ctx.ui.input(
-					"API Key (or env var name) — leave empty to keep current",
-					maskSecret(working.apiKey),
-				);
-				if (apiKey !== null) {
-					working.apiKey = apiKey || working.apiKey;
-				}
-				break;
-			}
-
-			case "3": {
-				const authHeader = await ctx.ui.confirm(
-					"Auth Header",
-					`Send Authorization: Bearer header? Currently: ${working.authHeader ? "on" : "off"}`,
-				);
-				working.authHeader = authHeader;
-				break;
-			}
-
-			case "4": {
-				const filter = await ctx.ui.input("Model filter regex (optional)", working.filter || "");
-				if (filter !== null) {
-					working.filter = filter || undefined;
-				}
-				break;
-			}
-
-			case "5": {
-				ctx.ui.notify("[pi-ollama] Testing…", "info");
-				try {
-					const discovery = await discoverModels(working);
-					ctx.ui.notify(
-						`[pi-ollama] ✓ ${discovery.models.length} models found (${discovery.source})`,
-						"success",
-					);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					ctx.ui.notify(`[pi-ollama] ✗ ${msg.slice(0, 120)}`, "warning");
-				}
-				break;
-			}
-
-			case "6": {
-				return working;
-			}
-
-			case "7": {
-				return null;
-			}
-
-			default:
-				ctx.ui.notify("[pi-ollama] Invalid choice. Pick 1-7.", "warning");
-				break;
+		} else if (choice === "Save & discover") {
+			return working;
+		} else if (choice === "Cancel") {
+			return null;
 		}
 	}
+
+	return null;
 }

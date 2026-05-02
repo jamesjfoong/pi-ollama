@@ -45,6 +45,7 @@ export interface CommandContext {
 	ui: {
 		input: (title: string, placeholder?: string) => Promise<string | null>;
 		confirm: (title: string, message: string) => Promise<boolean>;
+		select: (title: string, options: string[]) => Promise<string | null>;
 		notify: (message: string, type?: string) => void;
 	};
 }
