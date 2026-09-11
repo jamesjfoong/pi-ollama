@@ -140,12 +140,17 @@ export function registerCommands(pi: ExtensionAPI): void {
 
 			// Persist
 			setCurrentConfig(result);
+			const activeAccount = result.activeAccount ?? "default";
+			const accounts = {
+				...(result.accounts ?? {}),
+				[activeAccount]: { apiKey: result.apiKey, apiKeys: result.apiKeys },
+			};
 			await savePersistedConfig({
 				baseUrl: result.baseUrl,
 				apiKey: result.apiKey,
 				apiKeys: result.apiKeys,
-				accounts: result.accounts,
-				activeAccount: result.activeAccount,
+				accounts,
+				activeAccount,
 				api: result.api,
 				compat: result.compat,
 				authHeader: result.authHeader,

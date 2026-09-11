@@ -1,7 +1,7 @@
 # pi-ollama
 
 <p align="center">
-  <img src="./assets/logo.jpeg" alt="PiOllama Plugins logo" width="240" />
+  <img src="./assets/logo.png" alt="PiOllama Plugins logo" width="240" />
 </p>
 
 [![npm](https://img.shields.io/npm/v/@jamesjfoong/pi-ollama?style=flat-square)](https://www.npmjs.com/package/@jamesjfoong/pi-ollama)
