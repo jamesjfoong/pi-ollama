@@ -92,6 +92,25 @@ describe("discovery (HTTP)", () => {
 		assert.deepStrictEqual(urls, [`${BASE}/v1/models`, `${BASE}/api/show`]);
 	});
 
+	it("uses fallback metadata when /api/show fails", async () => {
+		mockFetchWith({
+			"/v1/models": () => json({ data: [{ id: "broken-model", object: "model" }] }),
+			"/api/show": () => new Response("not found", { status: 404 }),
+		});
+
+		const result = await discoverModels(makeConfig());
+		assert.strictEqual(result.source, "live-openai");
+		assert.strictEqual(result.enrichment.failed, 1);
+		assert.deepStrictEqual(result.models[0], {
+			id: "broken-model",
+			name: "broken-model",
+			reasoning: false,
+			input: ["text"],
+			contextWindow: 128000,
+			maxTokens: 16384,
+		});
+	});
+
 	it("falls back to native /api/tags when OpenAI returns empty list", async () => {
 		mockFetchWith({
 			"/v1/models": () => json({ data: [] }),

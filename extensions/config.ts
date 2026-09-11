@@ -4,21 +4,10 @@ import { dirname, resolve } from "node:path";
 import { CONFIG_PATH, CONFIG_VERSION, DEFAULT_PREFIX, DEFAULTS } from "./constants";
 import type { OllamaAccount, OllamaConfig, PersistedConfig } from "./types";
 
-export {
-	CONFIG_PATH,
-	CONFIG_VERSION,
-	DEFAULT_CONTEXT_WINDOW,
-	DEFAULT_MAX_TOKENS,
-	DEFAULT_PREFIX,
-	DEFAULTS,
-	ENRICH_TIMEOUT_MS,
-	LIST_TIMEOUT_MS,
-} from "./constants";
-
 /** Load the persisted JSON config, returning an empty object on any error. */
-export async function loadPersistedConfig(): Promise<PersistedConfig> {
+export async function loadPersistedConfig(path: string = CONFIG_PATH): Promise<PersistedConfig> {
 	try {
-		const raw = await readFile(CONFIG_PATH, "utf-8");
+		const raw = await readFile(path, "utf-8");
 		return JSON.parse(raw) as PersistedConfig;
 	} catch {
 		return {};
@@ -26,20 +15,24 @@ export async function loadPersistedConfig(): Promise<PersistedConfig> {
 }
 
 /** Atomically write the persisted config file. */
-export async function savePersistedConfig(config: PersistedConfig): Promise<void> {
-	await mkdir(dirname(CONFIG_PATH), { recursive: true });
-	const tmpFile = `${CONFIG_PATH}.tmp`;
+export async function savePersistedConfig(
+	config: PersistedConfig,
+	path: string = CONFIG_PATH,
+): Promise<void> {
+	await mkdir(dirname(path), { recursive: true });
+	const tmpFile = `${path}.tmp`;
 	await writeFile(tmpFile, JSON.stringify({ ...config, version: CONFIG_VERSION }, null, 2));
-	await rename(tmpFile, CONFIG_PATH);
+	await rename(tmpFile, path);
 }
 
 /**
  * Read legacy `models.json` as a fallback for baseUrl / apiKey / api / compat.
  * Returns a partial config so the normal resolution chain can override it.
  */
-export async function loadModelsJsonFallback(): Promise<Partial<OllamaConfig>> {
+export async function loadModelsJsonFallback(
+	path = resolve(homedir(), ".pi/agent/models.json"),
+): Promise<Partial<OllamaConfig>> {
 	try {
-		const path = resolve(homedir(), ".pi/agent/models.json");
 		const raw = await readFile(path, "utf-8");
 		const parsed = JSON.parse(raw);
 		const ollama = parsed.providers?.ollama;
@@ -129,22 +122,29 @@ export function resolveAccounts(
  * Build an effective config using the priority chain:
  *   env vars → persisted file → models.json fallback → defaults
  */
-export async function resolveConfig(): Promise<OllamaConfig> {
-	const persisted = await loadPersistedConfig();
-	const fallback = await loadModelsJsonFallback();
+export async function resolveConfig(
+	options: {
+		configPath?: string;
+		modelsJsonPath?: string;
+		env?: NodeJS.ProcessEnv;
+	} = {},
+): Promise<OllamaConfig> {
+	const env = options.env ?? process.env;
+	const persisted = await loadPersistedConfig(options.configPath);
+	const fallback = await loadModelsJsonFallback(options.modelsJsonPath);
 	const { accounts, activeAccount } = resolveAccounts(persisted, fallback);
 	const selected = accounts[activeAccount] ?? {};
 
 	const configuredBaseUrl = resolveBaseUrl(
-		process.env.OLLAMA_BASE_URL ?? persisted.baseUrl ?? fallback.baseUrl,
+		env.OLLAMA_BASE_URL ?? persisted.baseUrl ?? fallback.baseUrl,
 	);
-	const prefix = resolvePrefix(process.env.OLLAMA_PREFIX ?? persisted.prefix ?? fallback.prefix);
+	const prefix = resolvePrefix(env.OLLAMA_PREFIX ?? persisted.prefix ?? fallback.prefix);
 	const baseUrl = normalizeBaseUrl(configuredBaseUrl, prefix);
 
 	// Prefer apiKeys array, fall back to legacy apiKey
 	const keysInput =
-		process.env.OLLAMA_API_KEYS ??
-		process.env.OLLAMA_API_KEY ??
+		env.OLLAMA_API_KEYS ??
+		env.OLLAMA_API_KEY ??
 		selected.apiKeys ??
 		selected.apiKey ??
 		persisted.apiKeys ??
@@ -161,10 +161,10 @@ export async function resolveConfig(): Promise<OllamaConfig> {
 		accounts,
 		activeAccount,
 		account: activeAccount,
-		api: process.env.OLLAMA_API ?? persisted.api ?? fallback.api ?? DEFAULTS.api,
+		api: env.OLLAMA_API ?? persisted.api ?? fallback.api ?? DEFAULTS.api,
 		compat: persisted.compat ?? fallback.compat ?? DEFAULTS.compat,
 		authHeader: persisted.authHeader ?? fallback.authHeader ?? DEFAULTS.authHeader,
-		filter: process.env.OLLAMA_FILTER ?? persisted.filter,
+		filter: env.OLLAMA_FILTER ?? persisted.filter,
 		prefix,
 		globalModelDefaults: persisted.globalModelDefaults,
 		modelOverridePatterns: persisted.modelOverridePatterns,
