@@ -31,9 +31,10 @@ extensions/
 2. **Write code** following the patterns below.
 3. **Run checks**:
    ```bash
-   npm run typecheck    # Ensure TypeScript compiles
-   npm run test         # Run unit tests
-   npm run format:check # Verify formatting
+   npm run typecheck     # Ensure TypeScript compiles
+   npm run test          # Run unit tests
+   npm run test:coverage # Run tests with coverage threshold
+   npm run format:check  # Verify formatting
    ```
 4. **Open a PR** with a clear description.
 
@@ -53,7 +54,7 @@ Make sure all checks pass before requesting a review.
 
 - **Keep runtime dependency-free.** Only Node.js built-ins in `extensions/`.
 - **One concern per file.** Add new logic to the appropriate module; create a new module if it doesn't fit.
-- **Preserve backward compatibility.** The `~/.pi/agent/models.json` fallback must keep working.
+- **Preserve backward compatibility.** The `~/.pi/agent/models.json` fallback and existing `apiKey` / `apiKeys` settings must keep working.
 - **Never hardcode secrets.**
 - **Startup resilience.** Discovery failures should warn, not crash.
 - **Small, focused diffs.** One logical change per PR.
