@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { CONFIG_PATH, CONFIG_VERSION, DEFAULT_PREFIX, DEFAULTS } from "./constants";
-import type { OllamaConfig, PersistedConfig } from "./types";
+import type { OllamaAccount, OllamaConfig, PersistedConfig } from "./types";
 
 export {
 	CONFIG_PATH,
@@ -105,6 +105,26 @@ export function resolveApiKeys(input?: string | string[]): string[] {
 	return resolved.length > 0 ? resolved : [DEFAULTS.apiKey];
 }
 
+export function resolveAccounts(
+	persisted: PersistedConfig,
+	fallback: Partial<OllamaConfig>,
+): { accounts: Record<string, OllamaAccount>; activeAccount: string } {
+	const persistedAccounts = persisted.accounts;
+	if (persistedAccounts && Object.keys(persistedAccounts).length > 0) {
+		const activeAccount =
+			persisted.activeAccount && persisted.activeAccount in persistedAccounts
+				? persisted.activeAccount
+				: Object.keys(persistedAccounts).sort()[0];
+		return { accounts: persistedAccounts, activeAccount };
+	}
+
+	const legacy = persisted.apiKey || persisted.apiKeys ? persisted : fallback;
+	return {
+		accounts: { default: { apiKey: legacy.apiKey, apiKeys: legacy.apiKeys } },
+		activeAccount: "default",
+	};
+}
+
 /**
  * Build an effective config using the priority chain:
  *   env vars → persisted file → models.json fallback → defaults
@@ -112,6 +132,8 @@ export function resolveApiKeys(input?: string | string[]): string[] {
 export async function resolveConfig(): Promise<OllamaConfig> {
 	const persisted = await loadPersistedConfig();
 	const fallback = await loadModelsJsonFallback();
+	const { accounts, activeAccount } = resolveAccounts(persisted, fallback);
+	const selected = accounts[activeAccount] ?? {};
 
 	const configuredBaseUrl = resolveBaseUrl(
 		process.env.OLLAMA_BASE_URL ?? persisted.baseUrl ?? fallback.baseUrl,
@@ -122,10 +144,12 @@ export async function resolveConfig(): Promise<OllamaConfig> {
 	// Prefer apiKeys array, fall back to legacy apiKey
 	const keysInput =
 		process.env.OLLAMA_API_KEYS ??
-		persisted.apiKeys ??
-		fallback.apiKeys ??
 		process.env.OLLAMA_API_KEY ??
+		selected.apiKeys ??
+		selected.apiKey ??
+		persisted.apiKeys ??
 		persisted.apiKey ??
+		fallback.apiKeys ??
 		fallback.apiKey;
 
 	const allKeys = resolveApiKeys(keysInput);
@@ -134,6 +158,9 @@ export async function resolveConfig(): Promise<OllamaConfig> {
 		baseUrl,
 		apiKey: allKeys[0],
 		apiKeys: allKeys.length > 1 ? allKeys : undefined,
+		accounts,
+		activeAccount,
+		account: activeAccount,
 		api: process.env.OLLAMA_API ?? persisted.api ?? fallback.api ?? DEFAULTS.api,
 		compat: persisted.compat ?? fallback.compat ?? DEFAULTS.compat,
 		authHeader: persisted.authHeader ?? fallback.authHeader ?? DEFAULTS.authHeader,

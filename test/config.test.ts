@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { DEFAULTS, DEFAULT_PREFIX } from "../extensions/constants";
 import {
 	normalizeBaseUrl,
+	resolveAccounts,
 	resolveApiKeys,
 	resolveBaseUrl,
 	resolvePrefix,
@@ -60,6 +61,39 @@ describe("config", () => {
 				normalizeBaseUrl("http://localhost:11434", "/v1"),
 				"http://localhost:11434",
 			);
+		});
+	});
+
+	describe("resolveAccounts", () => {
+		it("wraps legacy keys in default account without changing values", () => {
+			assert.deepStrictEqual(resolveAccounts({ apiKey: "key1", apiKeys: ["key1", "key2"] }, {}), {
+				accounts: { default: { apiKey: "key1", apiKeys: ["key1", "key2"] } },
+				activeAccount: "default",
+			});
+		});
+
+		it("uses selected named account", () => {
+			assert.deepStrictEqual(
+				resolveAccounts(
+					{
+						activeAccount: "work",
+						accounts: { personal: { apiKey: "p" }, work: { apiKey: "w" } },
+					},
+					{},
+				),
+				{
+					accounts: { personal: { apiKey: "p" }, work: { apiKey: "w" } },
+					activeAccount: "work",
+				},
+			);
+		});
+
+		it("falls back to first named account when active account is invalid", () => {
+			const result = resolveAccounts(
+				{ activeAccount: "missing", accounts: { zeta: { apiKey: "z" }, alpha: { apiKey: "a" } } },
+				{},
+			);
+			assert.strictEqual(result.activeAccount, "alpha");
 		});
 	});
 

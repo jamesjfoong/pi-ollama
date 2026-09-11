@@ -59,6 +59,7 @@ Replace `<model-name>` with a model shown by `/model` or `ollama list`.
 | Command           | What it does                                                         |
 | ----------------- | -------------------------------------------------------------------- |
 | `/ollama-setup`   | Interactive TUI setup — edit endpoint, key pool, filter, etc.        |
+| `/ollama-account` | Select the active named account                                      |
 | `/ollama-refresh` | Re-fetch models from Ollama without restarting pi                    |
 | `/ollama-status`  | Show endpoint, source (live/cache), model count, key pool, cache age |
 | `/ollama-doctor`  | Diagnose endpoint/auth/cache/enrichment state                        |
@@ -108,6 +109,34 @@ Settings are saved to `~/.pi/agent/pi-ollama.json`:
 ```
 
 This file is auto-created and updated by `/ollama-setup`. You can also edit it directly.
+
+### Named accounts
+
+Existing `apiKey` and `apiKeys` configurations keep working. They are treated as a `default` account internally. Add named accounts when you want to switch between accounts:
+
+```json
+{
+	"activeAccount": "personal",
+	"accounts": {
+		"personal": { "apiKey": "personal-key" },
+		"work": { "apiKey": "work-key", "apiKeys": ["work-key-1", "work-key-2"] }
+	}
+}
+```
+
+Switch account inside pi:
+
+```text
+/ollama-account
+```
+
+Environment variables still override account keys:
+
+```text
+OLLAMA_API_KEYS → OLLAMA_API_KEY → selected account → legacy apiKeys/apiKey → models.json
+```
+
+Account names and key values are never shown in full.
 
 ### Model fixes and overrides
 
