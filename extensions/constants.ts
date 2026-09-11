@@ -21,7 +21,6 @@ export const DEFAULTS: Required<
 		| "apiKeys"
 		| "accounts"
 		| "activeAccount"
-		| "account"
 		| "prefix"
 		| "globalModelDefaults"
 		| "modelOverridePatterns"

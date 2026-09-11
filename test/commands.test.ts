@@ -19,7 +19,6 @@ const config = (overrides: Partial<OllamaConfig> = {}): OllamaConfig => ({
 		work: { apiKey: "test-work" },
 	},
 	activeAccount: "personal",
-	account: "personal",
 	...overrides,
 });
 
@@ -75,8 +74,7 @@ describe("account command", () => {
 			savePersistedConfig: async (value) => {
 				saved = value;
 			},
-			resolveConfig: async () =>
-				config({ activeAccount: "work", account: "work", apiKey: "test-work" }),
+			resolveConfig: async () => config({ activeAccount: "work", apiKey: "test-work" }),
 			discoverModels: async () => ({
 				...result,
 				models: [
@@ -165,6 +163,25 @@ describe("account command", () => {
 		await registered.handler("missing", context(notifications));
 		assert.strictEqual(writes, 0);
 		assert.deepStrictEqual(notifications, ["[pi-ollama] Unknown account: missing"]);
+	});
+
+	it("rejects inherited property names without persistence", async () => {
+		const registered = command();
+		const notifications: string[] = [];
+		let writes = 0;
+		registerAccountCommand(registered.pi, {
+			loadPersistedConfig: async () => ({}),
+			savePersistedConfig: async () => {
+				writes += 1;
+			},
+			resolveConfig: async () => config(),
+			discoverModels: async () => result,
+			registerProvider: () => {},
+			setCurrentConfig: () => {},
+		});
+		await registered.handler("toString", context(notifications));
+		assert.strictEqual(writes, 0);
+		assert.deepStrictEqual(notifications, ["[pi-ollama] Unknown account: toString"]);
 	});
 
 	it("does nothing when selection is cancelled", async () => {

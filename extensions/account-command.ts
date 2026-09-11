@@ -28,7 +28,7 @@ export function registerAccountCommand(pi: ExtensionAPI, deps: AccountCommandDep
 			const choice =
 				requested || (ctx.hasUI ? await ctx.ui.select("Select Ollama account", names) : null);
 			if (!choice) return;
-			if (!(choice in accounts)) {
+			if (!Object.hasOwn(accounts, choice)) {
 				ctx.ui.notify(`[pi-ollama] Unknown account: ${choice}`, "error");
 				return;
 			}

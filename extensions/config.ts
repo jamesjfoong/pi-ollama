@@ -160,7 +160,6 @@ export async function resolveConfig(
 		apiKeys: allKeys.length > 1 ? allKeys : undefined,
 		accounts,
 		activeAccount,
-		account: activeAccount,
 		api: env.OLLAMA_API ?? persisted.api ?? fallback.api ?? DEFAULTS.api,
 		compat: persisted.compat ?? fallback.compat ?? DEFAULTS.compat,
 		authHeader: persisted.authHeader ?? fallback.authHeader ?? DEFAULTS.authHeader,

@@ -7,7 +7,6 @@ export interface OllamaConfig {
 	apiKeys?: string[];
 	accounts?: Record<string, OllamaAccount>;
 	activeAccount?: string;
-	account?: string;
 	api: string;
 	compat: Record<string, unknown>;
 	authHeader: boolean;

@@ -136,7 +136,7 @@ Environment variables still override account keys:
 OLLAMA_API_KEYS → OLLAMA_API_KEY → selected account → legacy apiKeys/apiKey → models.json
 ```
 
-Account names and key values are never shown in full.
+Account names may appear in status and selection UI. API key values are never shown in full.
 
 ### Model fixes and overrides
 
