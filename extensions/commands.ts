@@ -1,4 +1,5 @@
 import { getCacheAgeMs, getCacheTtlMs, isCacheFresh, loadCache } from "./cache";
+import { registerAccountCommand } from "./account-command";
 import { loadPersistedConfig, resolveConfig, savePersistedConfig } from "./config";
 import { discoverModels } from "./discovery";
 import { log } from "./logger";
@@ -78,45 +79,13 @@ async function persistExactModelOverride(
 }
 
 export function registerCommands(pi: ExtensionAPI): void {
-	// ---------------------------------------------------------------------------
-	// /ollama-account
-	// ---------------------------------------------------------------------------
-	pi.registerCommand("ollama-account", {
-		description: "Select the active Ollama account",
-		handler: async (args: unknown, ctx: CommandContext) => {
-			const config = await getConfig();
-			const accounts = config.accounts ?? {
-				default: { apiKey: config.apiKey, apiKeys: config.apiKeys },
-			};
-			const names = Object.keys(accounts).sort();
-			const requested = typeof args === "string" ? args.trim() : "";
-			const choice =
-				requested || (ctx.hasUI ? await ctx.ui.select("Select Ollama account", names) : null);
-			if (!choice) return;
-			if (!(choice in accounts)) {
-				ctx.ui.notify(`[pi-ollama] Unknown account: ${choice}`, "error");
-				return;
-			}
-
-			const persisted = await loadPersistedConfig();
-			await savePersistedConfig({ ...persisted, accounts, activeAccount: choice });
-			const next = await resolveConfig();
-			setCurrentConfig(next);
-			try {
-				const discovery = await discoverModels(next);
-				registerProvider(pi, next, discovery);
-				ctx.ui.notify(
-					`[pi-ollama] Active account: ${choice}; ${discovery.models.length} models refreshed`,
-					"success",
-				);
-			} catch (err) {
-				const msg = err instanceof Error ? err.message : String(err);
-				ctx.ui.notify(
-					`[pi-ollama] Active account: ${choice}; refresh failed: ${msg.slice(0, 120)}`,
-					"warning",
-				);
-			}
-		},
+	registerAccountCommand(pi, {
+		loadPersistedConfig,
+		savePersistedConfig,
+		resolveConfig,
+		discoverModels,
+		registerProvider,
+		setCurrentConfig,
 	});
 
 	// ---------------------------------------------------------------------------
