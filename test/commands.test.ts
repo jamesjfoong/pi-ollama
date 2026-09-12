@@ -1,6 +1,13 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import { registerAccountCommand } from "../extensions/account-command";
+import {
+	doctorSummary,
+	formatDuration,
+	modelOption,
+	modelTags,
+	selectModel,
+} from "../extensions/presentation";
 import type {
 	CommandContext,
 	DiscoveryResult,
@@ -61,6 +68,109 @@ function command() {
 		},
 	};
 }
+
+describe("command presentation", () => {
+	it("labels plain text models", () => {
+		assert.strictEqual(modelTags({ reasoning: false, input: ["text"] }), "text-only");
+	});
+
+	it("formats elapsed durations", () => {
+		assert.strictEqual(formatDuration(), "<1s");
+		assert.strictEqual(formatDuration(1_000), "1s");
+		assert.strictEqual(formatDuration(61_000), "1m 1s");
+	});
+
+	it("labels model picker options with searchable capabilities", () => {
+		assert.strictEqual(
+			modelOption({
+				id: "qwen3:8b",
+				name: "qwen3:8b",
+				reasoning: true,
+				input: ["text", "image"],
+				contextWindow: 32768,
+				maxTokens: 8192,
+			}),
+			"qwen3:8b · reasoning, vision · context=32,768",
+		);
+	});
+
+	it("formats missing cache and discovery state", () => {
+		const output = doctorSummary(config(), null, null);
+		assert.ok(output.includes("│  Status        missing"));
+		assert.ok(output.includes("│  Source        none"));
+	});
+
+	it("formats long cache age", () => {
+		const output = doctorSummary(config(), result, {
+			version: 1,
+			baseUrl: config().baseUrl,
+			timestamp: Date.now() - 61_000,
+			source: "live",
+			models: [],
+			enrichment: { attempted: 0, succeeded: 0, failed: 0 },
+		});
+		assert.ok(output.includes("│  Age           1m 1s"));
+	});
+
+	it("selects the model matching picker option", async () => {
+		const models = [
+			{
+				id: "qwen3:8b",
+				name: "qwen3:8b",
+				reasoning: true,
+				input: ["text", "image"] as ["text", "image"],
+				contextWindow: 32768,
+				maxTokens: 8192,
+			},
+		];
+		const selected = await selectModel(
+			{
+				hasUI: true,
+				ui: {
+					select: async (_title, options) => options[0],
+					input: async () => "vision",
+					confirm: async () => false,
+					notify: () => {},
+				},
+			},
+			"Pick",
+			models,
+		);
+		assert.strictEqual(selected, models[0]);
+	});
+
+	it("returns no model when picker is cancelled", async () => {
+		const selected = await selectModel(
+			{
+				hasUI: true,
+				ui: {
+					select: async () => null,
+					input: async () => null,
+					confirm: async () => false,
+					notify: () => {},
+				},
+			},
+			"Pick",
+			[],
+		);
+		assert.strictEqual(selected, undefined);
+	});
+
+	it("formats doctor output into readable sections", () => {
+		const output = doctorSummary(config(), result, {
+			version: 1,
+			baseUrl: config().baseUrl,
+			timestamp: Date.now(),
+			source: "live",
+			models: [],
+			enrichment: { attempted: 0, succeeded: 0, failed: 0 },
+		});
+		assert.ok(output.includes("┌─ [pi-ollama] Ollama Doctor"));
+		assert.ok(output.includes("├─ Cache"));
+		assert.ok(output.includes("├─ Discovery"));
+		assert.ok(output.includes("│  Source        live-openai"));
+	});
+});
 
 describe("account command", () => {
 	it("selects account, persists selection, and refreshes models", async () => {

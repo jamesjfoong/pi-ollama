@@ -63,8 +63,10 @@ Replace `<model-name>` with a model shown by `/model` or `ollama list`.
 | `/ollama-refresh` | Re-fetch models from Ollama without restarting pi                    |
 | `/ollama-status`  | Show endpoint, source (live/cache), model count, key pool, cache age |
 | `/ollama-doctor`  | Diagnose endpoint/auth/cache/enrichment state                        |
-| `/ollama-fix`     | Guided fixes for model vision/thinking/context behavior              |
-| `/ollama-info`    | Inspect a model's capabilities and applied fixes                     |
+| `/ollama-fix`     | Search and fix model vision/thinking/context behavior                |
+| `/ollama-info`    | Search and inspect model capabilities and applied fixes              |
+
+`/ollama-info` and `/ollama-fix` first ask for an optional model/capability filter, then open a focused picker. Search by model name, `reasoning`, `vision`, or `text-only`. Each option shows capability tags and context size. `/ollama-doctor` prints readable sections for endpoint, cache, and discovery state.
 
 ## Configuration
 
