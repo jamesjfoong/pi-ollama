@@ -19,6 +19,8 @@ export const DEFAULTS: Required<
 		OllamaConfig,
 		| "filter"
 		| "apiKeys"
+		| "accounts"
+		| "activeAccount"
 		| "prefix"
 		| "globalModelDefaults"
 		| "modelOverridePatterns"

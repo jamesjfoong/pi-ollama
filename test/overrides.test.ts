@@ -1,6 +1,11 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
-import { applyModelOverrides, mergeModelOverride } from "../extensions/overrides";
+import {
+	applyModelOverrides,
+	getMatchedOverrideLabels,
+	isPlainObject,
+	mergeModelOverride,
+} from "../extensions/overrides";
 import type { DiscoveredModel, OllamaConfig } from "../extensions/types";
 
 const model = (id = "llama3:8b"): DiscoveredModel => ({
@@ -22,6 +27,11 @@ const config = (overrides: Partial<OllamaConfig>): OllamaConfig => ({
 });
 
 describe("overrides", () => {
+	it("recognizes plain objects only", () => {
+		assert.strictEqual(isPlainObject({}), true);
+		assert.strictEqual(isPlainObject(null), false);
+		assert.strictEqual(isPlainObject([]), false);
+	});
 	it("applies exact model overrides", () => {
 		const result = applyModelOverrides(
 			[model("kimi-k2.6")],
@@ -123,5 +133,62 @@ describe("overrides", () => {
 
 		assert.strictEqual(result.models[0].reasoning, false);
 		assert.ok(result.warnings[0].includes("invalid regex"));
+	});
+
+	it("rejects non-object override values", () => {
+		const warnings: string[] = [];
+		mergeModelOverride(model(), "bad" as any, "bad", warnings);
+		assert.ok(warnings[0].includes("expected object"));
+	});
+
+	it("rejects non-object cost and thinking map values", () => {
+		const warnings: string[] = [];
+		mergeModelOverride(
+			model(),
+			{ cost: "bad" as any, thinkingLevelMap: "bad" as any },
+			"bad",
+			warnings,
+		);
+		assert.ok(warnings.some((warning) => warning.includes("cost: expected object")));
+		assert.ok(warnings.some((warning) => warning.includes("thinkingLevelMap: expected object")));
+	});
+
+	it("rejects invalid scalar and nested override fields", () => {
+		const warnings: string[] = [];
+		const result = mergeModelOverride(
+			model(),
+			{
+				name: " ",
+				api: 1 as any,
+				baseUrl: " ",
+				reasoning: "yes" as any,
+				contextWindow: 0,
+				maxTokens: 0,
+				cost: { input: "bad" as any },
+				headers: [] as any,
+				compat: [] as any,
+				thinkingLevelMap: { low: 1 as any },
+			},
+			"bad",
+			warnings,
+		);
+		assert.strictEqual(result.name, "llama3:8b");
+		assert.ok(warnings.length >= 9);
+	});
+
+	it("warns on pattern without match regex", () => {
+		const result = applyModelOverrides([model()], config({ modelOverridePatterns: [{} as any] }));
+		assert.ok(result.warnings[0].includes("missing match regex"));
+	});
+
+	it("matches exact and pattern override labels", () => {
+		const labels = getMatchedOverrideLabels(
+			"qwen3:8b",
+			config({
+				modelOverridePatterns: [{ match: "qwen", override: { reasoning: true } }],
+				modelOverrides: { "qwen3:8b": { reasoning: true } },
+			}),
+		);
+		assert.deepStrictEqual(labels, ["pattern[0]: qwen", "exact: qwen3:8b"]);
 	});
 });

@@ -5,6 +5,8 @@ export interface OllamaConfig {
 	baseUrl: string;
 	apiKey: string;
 	apiKeys?: string[];
+	accounts?: Record<string, OllamaAccount>;
+	activeAccount?: string;
 	api: string;
 	compat: Record<string, unknown>;
 	authHeader: boolean;
@@ -13,6 +15,11 @@ export interface OllamaConfig {
 	globalModelDefaults?: ModelOverride;
 	modelOverridePatterns?: ModelOverridePattern[];
 	modelOverrides?: Record<string, ModelOverride>;
+}
+
+export interface OllamaAccount {
+	apiKey?: string;
+	apiKeys?: string[];
 }
 
 /** Shape of the JSON file persisted to disk. */

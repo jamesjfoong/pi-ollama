@@ -1,4 +1,5 @@
-import { getCacheAgeMs, getCacheTtlMs, isCacheFresh, loadCache } from "./cache";
+import { loadCache } from "./cache";
+import { registerAccountCommand } from "./account-command";
 import { loadPersistedConfig, resolveConfig, savePersistedConfig } from "./config";
 import { discoverModels } from "./discovery";
 import { log } from "./logger";
@@ -13,20 +14,12 @@ import {
 } from "./provider";
 import { runSetupWizard } from "./setup-wizard";
 import type { CommandContext, ExtensionAPI, OllamaConfig } from "./types";
+import { doctorSummary, formatDuration, modelTags, selectModel } from "./presentation";
 
 /** Return cached config or re-resolve from disk/env. */
 function getConfig(): Promise<OllamaConfig> {
 	const cached = getCurrentConfig();
 	return cached ? Promise.resolve(cached) : resolveConfig();
-}
-
-function formatDuration(ms?: number): string {
-	if (!ms || ms < 1000) return "<1s";
-	const sec = Math.floor(ms / 1000);
-	if (sec < 60) return `${sec}s`;
-	const min = Math.floor(sec / 60);
-	const rem = sec % 60;
-	return `${min}m ${rem}s`;
 }
 
 function keyPoolSummary(config: OllamaConfig): string {
@@ -38,13 +31,6 @@ function keyPoolSummary(config: OllamaConfig): string {
 		return `${k.slice(0, 4)}***`;
 	});
 	return `keyPool=${keys.length}x keys=${masked.join(", ")}`;
-}
-
-function modelTags(model: { reasoning: boolean; input: readonly string[] }): string {
-	const tags: string[] = [];
-	if (model.reasoning) tags.push("reasoning");
-	if (model.input.includes("image")) tags.push("vision");
-	return tags.join(", ") || "text-only";
 }
 
 async function persistExactModelOverride(
@@ -78,6 +64,15 @@ async function persistExactModelOverride(
 }
 
 export function registerCommands(pi: ExtensionAPI): void {
+	registerAccountCommand(pi, {
+		loadPersistedConfig,
+		savePersistedConfig,
+		resolveConfig,
+		discoverModels,
+		registerProvider,
+		setCurrentConfig,
+	});
+
 	// ---------------------------------------------------------------------------
 	// /ollama-setup
 	// ---------------------------------------------------------------------------
@@ -99,10 +94,17 @@ export function registerCommands(pi: ExtensionAPI): void {
 
 			// Persist
 			setCurrentConfig(result);
+			const activeAccount = result.activeAccount ?? "default";
+			const accounts = {
+				...(result.accounts ?? {}),
+				[activeAccount]: { apiKey: result.apiKey, apiKeys: result.apiKeys },
+			};
 			await savePersistedConfig({
 				baseUrl: result.baseUrl,
 				apiKey: result.apiKey,
 				apiKeys: result.apiKeys,
+				accounts,
+				activeAccount,
 				api: result.api,
 				compat: result.compat,
 				authHeader: result.authHeader,
@@ -168,8 +170,9 @@ export function registerCommands(pi: ExtensionAPI): void {
 			const filter = config.filter ? ` filter=${config.filter}` : "";
 			const refreshed = formatDuration(Date.now() - getLastRefreshAt());
 			const keys = keyPoolSummary(config);
+			const account = config.activeAccount ? ` account=${config.activeAccount}` : "";
 			ctx.ui.notify(
-				`[pi-ollama] ${discovered.length} @ ${config.baseUrl} source=${source} ${keys} cacheAge=${age} refreshed=${refreshed} ago${filter}`,
+				`[pi-ollama] ${discovered.length} @ ${config.baseUrl}${account} source=${source} ${keys} cacheAge=${age} refreshed=${refreshed} ago${filter}`,
 				"info",
 			);
 		},
@@ -185,34 +188,7 @@ export function registerCommands(pi: ExtensionAPI): void {
 			const result = getLastResult();
 			const cache = await loadCache();
 
-			const lines: string[] = [];
-			lines.push(`endpoint=${config.baseUrl}`);
-			lines.push(`api=${config.api}`);
-			lines.push(`authHeader=${config.authHeader ? "on" : "off"}`);
-			lines.push(keyPoolSummary(config));
-			lines.push(`filter=${config.filter || "(none)"}`);
-			lines.push(`cacheTtl=${formatDuration(getCacheTtlMs())}`);
-
-			if (cache) {
-				const age = getCacheAgeMs(cache);
-				lines.push(
-					`cache=present age=${formatDuration(age)} fresh=${isCacheFresh(cache) ? "yes" : "no"} models=${cache.models.length}`,
-				);
-			} else {
-				lines.push("cache=missing");
-			}
-
-			if (result) {
-				lines.push(`lastSource=${result.source}`);
-				lines.push(
-					`models=${result.models.length} enrichment=${result.enrichment.succeeded}/${result.enrichment.attempted} ok (${result.enrichment.failed} failed)`,
-				);
-				if (result.warnings?.length) lines.push(`warnings=${result.warnings[0]}`);
-			} else {
-				lines.push("lastSource=none");
-			}
-
-			const summary = `[pi-ollama] doctor: ${lines.join(" | ")}`;
+			const summary = doctorSummary(config, result, cache);
 			ctx.ui.notify(summary, "info");
 			log("info", summary);
 		},
@@ -235,12 +211,7 @@ export function registerCommands(pi: ExtensionAPI): void {
 				return;
 			}
 
-			const choice = await ctx.ui.select(
-				"Pick a model to fix",
-				models.map((m) => m.name),
-			);
-			if (!choice) return;
-			const model = models.find((m) => m.name === choice);
+			const model = await selectModel(ctx, "Pick a model to fix", models);
 			if (!model) return;
 
 			const action = await ctx.ui.select(`Fix ${model.id}`, [
@@ -360,13 +331,7 @@ export function registerCommands(pi: ExtensionAPI): void {
 				return;
 			}
 
-			const choice = await ctx.ui.select(
-				"Pick a model to inspect",
-				models.map((m) => m.name),
-			);
-			if (!choice) return;
-
-			const model = models.find((m) => m.name === choice);
+			const model = await selectModel(ctx, "Pick a model to inspect", models);
 			if (!model) return;
 
 			const fixes = getMatchedOverrideLabels(model.id, config);

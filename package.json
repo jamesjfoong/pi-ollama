@@ -24,7 +24,9 @@
 		"format:check": "prettier --check .",
 		"typecheck": "tsc --noEmit",
 		"test": "npx tsx --test test/*.test.ts",
-		"test:coverage": "c8 --check-coverage --lines 60 npx tsx --test test/*.test.ts",
+		"test:coverage": "npm run coverage:lines && npm run coverage:functions",
+		"coverage:lines": "c8 --all --include extensions/config.ts --include extensions/account-command.ts --include extensions/presentation.ts --check-coverage --lines 100 --functions 0 npx tsx --test test/*.test.ts",
+		"coverage:functions": "c8 --include extensions/config.ts --include extensions/account-command.ts --include extensions/presentation.ts --check-coverage --lines 0 --functions 100 --exclude 'test/**' --exclude extensions/constants.ts npx tsx --test test/*.test.ts",
 		"coverage": "c8 --reporter=lcov npx tsx --test test/*.test.ts"
 	},
 	"devDependencies": {

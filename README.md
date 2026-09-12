@@ -1,7 +1,7 @@
 # pi-ollama
 
 <p align="center">
-  <img src="./assets/logo.jpeg" alt="PiOllama Plugins logo" width="240" />
+  <img src="./assets/logo.png" alt="PiOllama Plugins logo" width="240" />
 </p>
 
 [![npm](https://img.shields.io/npm/v/@jamesjfoong/pi-ollama?style=flat-square)](https://www.npmjs.com/package/@jamesjfoong/pi-ollama)
@@ -59,11 +59,14 @@ Replace `<model-name>` with a model shown by `/model` or `ollama list`.
 | Command           | What it does                                                         |
 | ----------------- | -------------------------------------------------------------------- |
 | `/ollama-setup`   | Interactive TUI setup — edit endpoint, key pool, filter, etc.        |
+| `/ollama-account` | Select the active named account                                      |
 | `/ollama-refresh` | Re-fetch models from Ollama without restarting pi                    |
 | `/ollama-status`  | Show endpoint, source (live/cache), model count, key pool, cache age |
 | `/ollama-doctor`  | Diagnose endpoint/auth/cache/enrichment state                        |
-| `/ollama-fix`     | Guided fixes for model vision/thinking/context behavior              |
-| `/ollama-info`    | Inspect a model's capabilities and applied fixes                     |
+| `/ollama-fix`     | Search and fix model vision/thinking/context behavior                |
+| `/ollama-info`    | Search and inspect model capabilities and applied fixes              |
+
+`/ollama-info` and `/ollama-fix` first ask for an optional model/capability filter, then open a focused picker. Search by model name, `reasoning`, `vision`, or `text-only`. Each option shows capability tags and context size. `/ollama-doctor` prints readable sections for endpoint, cache, and discovery state.
 
 ## Configuration
 
@@ -108,6 +111,34 @@ Settings are saved to `~/.pi/agent/pi-ollama.json`:
 ```
 
 This file is auto-created and updated by `/ollama-setup`. You can also edit it directly.
+
+### Named accounts
+
+Existing `apiKey` and `apiKeys` configurations keep working. They are treated as a `default` account internally. Add named accounts when you want to switch between accounts:
+
+```json
+{
+	"activeAccount": "personal",
+	"accounts": {
+		"personal": { "apiKey": "personal-key" },
+		"work": { "apiKey": "work-key", "apiKeys": ["work-key-1", "work-key-2"] }
+	}
+}
+```
+
+Switch account inside pi:
+
+```text
+/ollama-account
+```
+
+Environment variables still override account keys:
+
+```text
+OLLAMA_API_KEYS → OLLAMA_API_KEY → selected account → legacy apiKeys/apiKey → models.json
+```
+
+Account names may appear in status and selection UI. API key values are never shown in full.
 
 ### Model fixes and overrides
 
