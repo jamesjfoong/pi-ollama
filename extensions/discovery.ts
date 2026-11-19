@@ -124,7 +124,13 @@ async function discoverNativeModelIds(config: OllamaConfig): Promise<string[]> {
 	return (payload.models || []).map((m) => m.name).filter(Boolean);
 }
 
-function extractContextLength(modelInfo: Record<string, unknown>): number {
+function extractContextLength(modelInfo: Record<string, unknown>, parameters?: string): number {
+	if (typeof parameters === "string") {
+		const match = /^num_ctx[ \t]+([0-9]+)[ \t]*\r?$/m.exec(parameters);
+		const numCtx = Number(match?.[1]);
+		if (Number.isSafeInteger(numCtx) && numCtx > 0) return numCtx;
+	}
+
 	for (const [key, value] of Object.entries(modelInfo)) {
 		if (!key.endsWith(".context_length")) continue;
 		const num = Number(value);
@@ -159,12 +165,13 @@ async function enrichModel(config: OllamaConfig, modelId: string): Promise<Disco
 	const payload = (await response.json()) as {
 		capabilities?: string[];
 		model_info?: Record<string, unknown>;
+		parameters?: string;
 	};
 
 	const capabilities = payload.capabilities || [];
 	const vision = capabilities.includes("vision");
 	const thinking = capabilities.includes("thinking");
-	const contextWindow = extractContextLength(payload.model_info || {});
+	const contextWindow = extractContextLength(payload.model_info || {}, payload.parameters);
 
 	return {
 		id: modelId,
